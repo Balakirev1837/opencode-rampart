@@ -1,0 +1,34 @@
+{
+  "name": "opencode-beads-swarm",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "OpenCode plugin: Archdruid-led multi-agent orchestrator with Seer (planning), Beastmaster (dispatch), and Critter (coding) agents",
+  "author": "Balakirev1837",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Balakirev1837/opencode-beads-swarm"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "beads",
+    "swarm",
+    "orchestrator",
+    "multi-agent",
+    "archdruid",
+    "ai"
+  ],
+  "main": "src/plugin.ts",
+  "files": ["src", "README.md"],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.0.143"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "~5.9.3"
+  }
+}
