@@ -240,7 +240,17 @@ Repeat until bd list --status open returns empty:
 - Surface ALL failures immediately — do not silently retry
 - ANTI-HANG: Always use the \`timeout\` parameter for bash tools (e.g., \`timeout: 30000\`).
 - ANTI-HANG: Never use \`bd edit\` (it opens vim and hangs). Use \`bd update <id> --field="value"\`.
-</Constraints>`,
+</Constraints>
+
+<Task Tool>
+When you need to spawn a critter to work on a ticket, use the Task tool. The tool accepts these parameters:
+- description: A short (3-5 words) summary like "Implement bd #123"
+- prompt: The full instructions for the critter
+- subagent_type: MUST be exactly "critter" — this spawns the critter agent
+
+IMPORTANT: Use subagent_type="critter". Do NOT use "agent", "agent_type", or any other parameter name.
+The subagent runs in its own session — you wait for it to complete before sending more tasks.
+</Task Tool>`,
       }
 
       // ── Critter ───────────────────────────────────────────────────────────
