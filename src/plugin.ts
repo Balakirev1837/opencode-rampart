@@ -170,7 +170,7 @@ The coding agents work best with small, isolated context.
       // Sprint dispatcher. Polls the beads ready queue and spawns 1-2
       // Critter agents in parallel. Pauses and surfaces blockers to Archdruid.
       config.agent["beastmaster"] = {
-        model: "zai-coding-plan/glm-4.7-flashx",
+        model: "anthropic/claude-haiku-4-5",
         description: "Beastmaster — sprint dispatcher that works the bd ready queue via parallel critter agents",
         mode: "subagent",
         temperature: 0.0,

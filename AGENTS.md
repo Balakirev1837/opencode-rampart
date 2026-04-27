@@ -78,7 +78,7 @@ Every ticket carries exactly one domain label:
 |-------|-------|------|-------|----------|------|
 | archdruid | gemini-3-pro-preview | primary | 30 | no | — |
 | seer | claude-opus-4-6 | subagent (hidden) | 30 | no | `bd *` only |
-| beastmaster | glm-4.7-flashx | subagent | 50 | no | `bd ready/list/show/update` only |
+| beastmaster | claude-haiku-4-5 | subagent | 50 | no | `bd ready/list/show/update` only |
 | critter | glm-5.1 | subagent | 40 | yes | git, bd show/close/dolt, npm/pytest/make test, ls |
 | thread | glm-4.7-flashx | subagent | 15 | no | git, grep, find, ls |
 | spindle | glm-5.1 | subagent | 15 | no | none |
