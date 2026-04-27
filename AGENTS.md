@@ -82,12 +82,7 @@ Every ticket carries exactly one domain label:
 | critter | glm-5.1 | subagent | 40 | yes | git, bd show/close/dolt, npm/pytest/make test, ls | thread |
 | thread | glm-4.7-flashx | subagent | 15 | no | git, grep, find, ls | — |
 | spindle | glm-5.1 | subagent | 15 | no | none |
-| weft | glm-5.1 | subagent | — | no | none |
-| warp | glm-5.1 | subagent | — | no | none |
-| security-audit | minimax-m2.5-free | subagent | — | no | none |
 | docs-writer | glm-5.1 | subagent | 20 | yes | none |
-
-Weft, Warp, and Security-Audit are not yet finished. Their prompts and permissions are minimal placeholders.
 
 ## Making Changes
 

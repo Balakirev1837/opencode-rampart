@@ -15,9 +15,6 @@ import type { AgentConfig as V2AgentConfig } from "@opencode-ai/sdk/v2"
 //   critter        — Ticket implementer. Reads, codes, tests, closes one bd issue.
 //   thread         — Read-only codebase explorer. Fast and cheap.
 //   spindle        — External researcher. Docs and web fetching.
-//   weft           — Code quality reviewer. Read-only.
-//   warp           — Security auditor. Read-only.
-//   security-audit — Independent second-model security reviewer (minimax).
 //   docs-writer    — Technical documentation specialist.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -49,11 +46,8 @@ export const RampartPlugin: Plugin = async (_ctx) => {
           task: {
             seer: "allow",
             beastmaster: "allow",
-            warp: "allow",
-            "security-audit": "allow",
             thread: "allow",
             spindle: "allow",
-            weft: "allow",
             "docs-writer": "allow",
           },
         },
@@ -74,12 +68,8 @@ You operate a Beads-driven multi-agent workflow. ALL feature work follows this s
    Once planning is confirmed, delegate to 'beastmaster' to begin the sprint.
    Beastmaster will dispatch critter agents to work the ready queue in parallel.
 
-3. POST-SPRINT SECURITY REVIEW
-   After beastmaster reports the sprint is complete, delegate to BOTH 'warp' AND
-   'security-audit' in parallel to review the full diff of changes made during the sprint.
-
 When the user describes work to be done:
-  → Run the planning phase, then the execution phase, then security review.
+   → Run the planning phase, then the execution phase.
 
 When the user asks you to resume or continue existing work:
   → Skip planning. Delegate directly to 'beastmaster' to work the existing queue.
@@ -93,9 +83,6 @@ When the user asks to plan only (e.g. 'plan ...', '@seer ...'):
 - Use 'beastmaster' to execute the bd ready queue (after planning is done)
 - Use 'thread' for fast read-only codebase exploration
 - Use 'spindle' for external documentation and web research
-- Use 'weft' for code quality review
-- Use 'warp' for security auditing
-- Use 'security-audit' for independent cross-model security review
 - Use 'docs-writer' for README, API docs, changelogs, and user guides
 - Delegate aggressively — keep your own context lean
 </Delegation>
@@ -392,71 +379,6 @@ Answer questions about structure, patterns, and existing code quickly and precis
 Spindle — external researcher.
 You fetch external documentation, API references, and web resources.
 You never modify files. Return concise, relevant summaries with sources.
-</Role>`,
-      }
-
-      // ── Weft ──────────────────────────────────────────────────────────────
-      // Code quality reviewer. Read-only.
-      a["weft"] = {
-        model: "zai-coding-plan/glm-5.1",
-        description: "Weft — code quality reviewer, checks standards and best practices",
-        mode: "subagent",
-        temperature: 0.1,
-        permission: {
-          edit: "deny",
-          bash: { "*": "deny" },
-          webfetch: "deny",
-        },
-        prompt: `<Role>
-Weft — code quality reviewer.
-Review code for quality, correctness, maintainability, and adherence to conventions.
-You never modify files. Produce a clear APPROVE or NEEDS_CHANGES verdict with specifics.
-</Role>`,
-      }
-
-      // ── Warp ──────────────────────────────────────────────────────────────
-      // Security auditor. Read-only.
-      a["warp"] = {
-        model: "zai-coding-plan/glm-5.1",
-        description: "Warp — security auditor for code changes and sensitive operations",
-        mode: "subagent",
-        temperature: 0.1,
-        permission: {
-          edit: "deny",
-          bash: { "*": "deny" },
-          webfetch: "deny",
-        },
-        prompt: `<Role>
-Warp — security auditor.
-Review code changes for security vulnerabilities. Focus on:
-- Injection attacks (SQL, command, path traversal)
-- Auth and authorization flaws
-- Secrets and credential exposure
-- Insecure defaults and configurations
-- Sysadmin and homelab-specific risks (exposed services, weak perms)
-
-You never modify files. Fast-exit with APPROVE if no security-relevant changes exist.
-Produce a clear APPROVE or REJECT verdict with specific findings.
-</Role>`,
-      }
-
-      // ── Security Audit ────────────────────────────────────────────────────
-      // Independent second-model security reviewer for cross-model coverage.
-      a["security-audit"] = {
-        model: "opencode/minimax-m2.5-free",
-        description: "SecurityAudit — independent second-model security reviewer for cross-model coverage",
-        mode: "subagent",
-        temperature: 0.1,
-        permission: {
-          edit: "deny",
-          bash: { "*": "deny" },
-          webfetch: "deny",
-        },
-        prompt: `<Role>
-SecurityAudit — independent security reviewer.
-You are a second opinion, running on a different model than the primary auditor (Warp).
-Review code for security failures common in sysadmin and homelab environments.
-Produce a clear APPROVE or REJECT verdict. Be concise but specific.
 </Role>`,
       }
 
