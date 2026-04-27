@@ -1,7 +1,7 @@
 import type { Plugin } from "@opencode-ai/plugin"
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Beads Swarm Plugin
+// Rampart Plugin
 // A custom multi-agent orchestration plugin built around the beads issue tracker.
 //
 // Workflow:
@@ -20,7 +20,7 @@ import type { Plugin } from "@opencode-ai/plugin"
 //   docs-writer    — Technical documentation specialist.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const BeadsSwarmPlugin: Plugin = async (_ctx) => {
+export const RampartPlugin: Plugin = async (_ctx) => {
   return {
     // ── Global shell environment ──────────────────────────────────────────
     // Prevent git from spawning interactive pagers or password prompts

@@ -1,8 +1,8 @@
-# AGENTS.md — Beads Swarm Plugin
+# AGENTS.md — Rampart Plugin
 
 ## Project
 
-Single-file opencode plugin (`src/plugin.ts`) exporting `BeadsSwarmPlugin`. Configures 10 agents and a `shell.env` hook.
+Single-file opencode plugin (`src/plugin.ts`) exporting `RampartPlugin`. Configures 10 agents and a `shell.env` hook.
 
 **Stack:** TypeScript, `@opencode-ai/plugin` SDK, Bun runtime
 **Check:** `npm run typecheck` (runs `tsc --noEmit`)

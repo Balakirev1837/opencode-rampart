@@ -1,4 +1,4 @@
-# opencode-beads-swarm
+# opencode-rampart
 
 A multi-agent orchestration plugin for [opencode](https://opencode.ai) that turns a natural language request into a planned, dispatched, and implemented set of changes — using the [beads](https://github.com/beads-project/beads) issue tracker as the coordination backbone.
 
@@ -98,7 +98,7 @@ Add the plugin to your opencode config:
 
 ```json
 {
-  "plugin": ["opencode-beads-swarm"]
+  "plugin": ["opencode-rampart"]
 }
 ```
 
@@ -106,7 +106,7 @@ Or install from the repo:
 
 ```json
 {
-  "plugin": ["github:Balakirev1837/opencode-beads-swarm"]
+  "plugin": ["github:Balakirev1837/opencode-rampart"]
 }
 ```
 

@@ -1,5 +1,5 @@
 {
-  "name": "opencode-beads-swarm",
+  "name": "opencode-rampart",
   "version": "0.1.0",
   "type": "module",
   "description": "OpenCode plugin: Archdruid-led multi-agent orchestrator with Seer (planning), Beastmaster (dispatch), and Critter (coding) agents",
@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Balakirev1837/opencode-beads-swarm"
+    "url": "https://github.com/Balakirev1837/opencode-rampart"
   },
   "keywords": [
     "opencode",
