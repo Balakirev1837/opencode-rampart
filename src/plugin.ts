@@ -104,7 +104,7 @@ When beastmaster reports a blocker, decide the correct response:
       // Technical Product Manager. Takes a high-level goal and creates granular
       // bd tickets with dependencies. Runs on Opus for maximum planning quality.
       a["seer"] = {
-        model: "anthropic/claude-opus-4-6",
+        model: "openrouter/anthropic/claude-opus-4-6",
         description: "Seer — technical PM that breaks down requests into granular bd issues",
         mode: "subagent",
         hidden: true,
@@ -171,7 +171,7 @@ The coding agents work best with small, isolated context.
       // Sprint dispatcher. Polls the beads ready queue and spawns 1-2
       // Critter agents in parallel. Pauses and surfaces blockers to Archdruid.
       a["beastmaster"] = {
-        model: "anthropic/claude-haiku-4-5",
+        model: "openrouter/anthropic/claude-haiku-4-5",
         description: "Beastmaster — sprint dispatcher that works the bd ready queue via parallel critter agents",
         mode: "subagent",
         temperature: 0.0,

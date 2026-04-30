@@ -2,7 +2,7 @@
 
 ## Project
 
-Single-file opencode plugin (`src/plugin.ts`) exporting `RampartPlugin`. Configures 10 agents and a `shell.env` hook.
+Single-file opencode plugin (`src/plugin.ts`) exporting `RampartPlugin`. Configures 7 agents and a `shell.env` hook.
 
 **Stack:** TypeScript, `@opencode-ai/plugin` SDK, Bun runtime
 **Check:** `npm run typecheck` (runs `tsc --noEmit`)
@@ -77,8 +77,8 @@ Every ticket carries exactly one domain label:
 | Agent | Model | Mode | Steps | Can Edit | Bash | Task |
 |-------|-------|------|-------|----------|------|------|
 | archdruid | gemini-3-pro-preview | primary | 30 | no | — | all subagents |
-| seer | claude-opus-4-6 | subagent (hidden) | 30 | no | `bd *` only | — |
-| beastmaster | claude-haiku-4-5 | subagent | 50 | no | `bd ready/list/show/update` only | critter |
+| seer | openrouter/claude-opus-4-6 | subagent (hidden) | 30 | no | `bd *` only | — |
+| beastmaster | openrouter/claude-haiku-4-5 | subagent | 50 | no | `bd ready/list/show/update` only | critter |
 | critter | glm-5.1 | subagent | 40 | yes | git, bd show/close/dolt, npm/pytest/make test, ls | thread |
 | thread | glm-4.7-flashx | subagent | 15 | no | git, grep, find, ls | — |
 | spindle | glm-5.1 | subagent | 15 | no | none |

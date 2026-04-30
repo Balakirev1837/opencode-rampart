@@ -16,7 +16,6 @@ You: "Add user authentication with JWT tokens and a login page"
     → Critter B implements the login endpoint on branch bd-13
     → Beastmaster picks the next 2 ready tickets...
     → Sprint completes
-    → Warp + Security-Audit review the full diff
   Archdruid reports back to you
 ```
 
@@ -41,16 +40,6 @@ No commands to memorize. Just talk to it.
 **Spindle** — external researcher. Fetches documentation, API references, and web resources. Used when an agent needs information that isn't in the codebase.
 
 **Docs Writer** — writes technical documentation. READMEs, API docs, changelogs, guides. Can edit files and fetch web content for reference.
-
-### Review Agents (WIP)
-
-**Weft** — code quality reviewer. Produces APPROVE or NEEDS_CHANGES verdicts. Not yet fully integrated into the pipeline.
-
-**Warp** — security auditor. Reviews code for injection attacks, auth flaws, credential exposure, insecure defaults. Produces APPROVE or REJECT verdicts.
-
-**Security-Audit** — independent second-opinion security reviewer running on a different model (Minimax) than Warp, for cross-model coverage.
-
-Warp and Security-Audit are triggered by Archdruid as a post-sprint step after all implementation is complete. Weft is available on-demand.
 
 ## How It Works Under the Hood
 
@@ -117,9 +106,8 @@ Or install from the repo:
 - [Dolt](https://www.dolthub.com/) installed (beads backend)
 - API keys configured for the models used by the agents:
   - Google (Gemini) — for Archdruid
-  - Anthropic (Claude Opus) — for Seer
-  - ZAI (GLM) — for Beastmaster, Critter, Thread, Spindle, Weft, Warp, Docs Writer
-  - OpenCode/Minimax (free tier) — for Security-Audit
+  - OpenRouter — for Seer (Claude Opus) and Beastmaster (Claude Haiku)
+  - ZAI (GLM) — for Critter, Thread, Spindle, Docs Writer
 
 ## Project Structure
 
@@ -138,10 +126,10 @@ npm run typecheck   # Type-check the project (the only check available)
 
 ## Status
 
-This is v0.1. The core pipeline (Archdruid → Seer → Beastmaster → Critter) is designed and configured. Weft, Warp, and Security-Audit are placeholder stubs awaiting full prompt and permission buildout.
+This is v0.1. The core pipeline (Archdruid → Seer → Beastmaster → Critter) is designed and configured. Support agents (Thread, Spindle, Docs Writer) are available for delegation.
 
 Future work:
 - Git worktree support via opencode's workspace adaptor (instead of feature branches)
-- Full Weft/Warp/Security-Audit integration with structured review flows
 - Configurable parallelism limit (currently hardcoded to 2 critters)
 - Post-sprint merge automation
+- Code quality and security review agents
