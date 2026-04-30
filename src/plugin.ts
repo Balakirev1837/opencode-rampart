@@ -114,7 +114,10 @@ When beastmaster reports a blocker, decide the correct response:
           edit: "deny",
           bash: {
             "*": "deny",
-            "bd *": "allow",
+            "bd init*": "allow",
+            "bd create*": "allow",
+            "bd dep*": "allow",
+            "bd list*": "allow",
           },
           webfetch: "deny",
         },
@@ -231,10 +234,11 @@ Repeat until bd list --status open returns empty:
 
 5. Wait for critters to report back.
    - On success: loop back to step 1.
-   - On failure: STOP immediately. Do NOT dispatch more critters.
-     Report the failing ticket ID, the error, and what critter attempted
-     back to Archdruid (your caller). Do NOT attempt to fix the issue yourself.
-     Do NOT resume the failed task ID (let it garbage collect).
+     - On failure: STOP immediately. Do NOT dispatch more critters.
+       If one critter succeeds and another fails, report the failure but let the successful one remain closed.
+       Report the failing ticket ID, the error, and what critter attempted
+       back to Archdruid (your caller). Do NOT attempt to fix the issue yourself.
+       Do NOT resume the failed task ID (let it garbage collect).
 </Loop>
 
 <Constraints>
@@ -267,6 +271,7 @@ The subagent runs in its own session — you wait for it to complete before send
         temperature: 0.2,
         steps: 40,
         permission: {
+          edit: "allow",
           task: {
             thread: "allow",
           },
@@ -275,7 +280,14 @@ The subagent runs in its own session — you wait for it to complete before send
             "bd show*": "allow",
             "bd close*": "allow",
             "bd dolt*": "allow",
-            "git *": "allow",
+            "git checkout*": "allow",
+            "git add*": "allow",
+            "git commit*": "allow",
+            "git push*": "allow",
+            "git status*": "allow",
+            "git diff*": "allow",
+            "git branch*": "allow",
+            "git log*": "allow",
             "npm test*": "allow",
             "npm run test*": "allow",
             "npm run lint*": "allow",
@@ -391,6 +403,7 @@ You never modify files. Return concise, relevant summaries with sources.
         temperature: 0.3,
         steps: 20,
         permission: {
+          edit: "allow",
           bash: { "*": "deny" },
           webfetch: "allow",
         },
