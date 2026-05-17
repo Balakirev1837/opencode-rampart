@@ -2,7 +2,7 @@
 
 ## Project
 
-Single-file opencode plugin (`src/plugin.ts`) exporting `RampartPlugin`. Configures 7 agents and a `shell.env` hook.
+Single-file opencode plugin (`src/plugin.ts`) exporting `RampartPlugin`. Configures 7 agents, 4 hooks, and a custom tool.
 
 **Stack:** TypeScript, `@opencode-ai/plugin` SDK, Bun runtime
 **Check:** `npm run typecheck` (runs `tsc --noEmit`)
@@ -42,6 +42,22 @@ Each critter creates a feature branch `bd-<id>` from current HEAD. Parallel crit
 ### `shell.env`
 
 Sets `GIT_PAGER=cat` and `GIT_TERMINAL_PROMPT=0` on all shell invocations. Agent prompts do not need to set these manually.
+
+### `tool.execute.before`
+
+Auto-injects `timeout: 30000` on every bash tool call that doesn't already have a timeout set. This is platform-enforced — agents don't need to remember to set timeouts.
+
+### `experimental.session.compacting`
+
+When context gets compacted mid-session, injects recovery instructions telling agents to re-read their task state from the `bd` tracker. Prevents agents from losing their place after compaction.
+
+### Custom Tool: `critter_report`
+
+Structured exit protocol for critters. Critters MUST call this tool before ending their session. Two modes:
+- `status="closed"` — verifies the ticket is actually closed via `bd show`, returns `CRITTER_REPORT: CLOSED <id>`
+- `status="blocked"` — automatically resets the ticket to open via `bd update`, returns `CRITTER_REPORT: BLOCKED <id> REASON: ...`
+
+Beastmaster parses the tool's output and also independently verifies ticket status via `bd show`.
 
 ## Beads Issue Tracker (bd)
 
@@ -83,7 +99,7 @@ Every ticket carries exactly one domain label:
 | seer | moonshotai/kimi-k2.6 | subagent (hidden) | 30 | no | `bd *` only | — |
 | beastmaster | deepseek/deepseek-v4-flash | subagent | 50 | no | `bd ready/list/show/update` only | critter |
 | hierophant | anthropic/claude-3.5-sonnet | subagent | 20 | no | `npm/make/pytest`, `bd show/update/list`, `git` | — |
-| critter | glm-5.1 | subagent | 40 | yes | git, bd show/close/dolt, npm/pytest/make test, ls | thread |
+| critter | glm-5.1 | subagent | 25 | yes | git, bd show/close/update/dolt, npm/pytest/make test, ls | thread |
 | thread | glm-4.7-flashx | subagent | 15 | no | git, grep, find, ls | — |
 | spindle | glm-5.1 | subagent | 15 | no | none |
 | docs-writer | glm-5.1 | subagent | 20 | yes | none |

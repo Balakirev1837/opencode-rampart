@@ -1,4 +1,4 @@
-import type { Plugin } from "@opencode-ai/plugin"
+import { tool, type Plugin } from "@opencode-ai/plugin"
 import type { AgentConfig as V2AgentConfig } from "@opencode-ai/sdk/v2"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ import type { AgentConfig as V2AgentConfig } from "@opencode-ai/sdk/v2"
 //   docs-writer    — Technical documentation specialist.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const RampartPlugin: Plugin = async (_ctx) => {
+export const RampartPlugin: Plugin = async (ctx) => {
   return {
     // ── Global shell environment ──────────────────────────────────────────
     // Prevent git from spawning interactive pagers or password prompts
@@ -27,6 +27,108 @@ export const RampartPlugin: Plugin = async (_ctx) => {
     "shell.env": async (_input, output) => {
       output.env["GIT_PAGER"] = "cat"
       output.env["GIT_TERMINAL_PROMPT"] = "0"
+    },
+
+    // ── Auto-inject bash timeouts ───────────────────────────────────────
+    // Platform-enforced: every bash call gets a 30s timeout if the model
+    // didn't set one. Prevents hung commands regardless of prompt compliance.
+    "tool.execute.before": async (input, output) => {
+      if (input.tool === "bash" && output.args.timeout == null) {
+        output.args.timeout = 30000
+      }
+    },
+
+    // ── Compaction recovery ─────────────────────────────────────────────
+    // When context gets compacted mid-session, inject instructions to
+    // recover swarm state from the tracker instead of relying on memory.
+    "experimental.session.compacting": async (_input, output) => {
+      output.context.push(
+        "SWARM CONTEXT: You are part of the Beads Swarm workflow. " +
+        "Your conversation history has been compacted. " +
+        "Run `bd list --status open --json` and `bd list --status in_progress --json` " +
+        "to recover your current task state from the tracker. " +
+        "If you are a critter working on a specific ticket, run `bd show <id> --json` " +
+        "to re-read your assigned ticket. " +
+        "You MUST still call the critter_report tool before ending your session if you are a critter."
+      )
+    },
+
+    // ── Custom tools ────────────────────────────────────────────────────
+    // Structured exit protocol for critters. Replaces the fragile
+    // "RESULT: CLOSED/BLOCKED" text convention with a typed tool call.
+    tool: {
+      critter_report: tool({
+        description:
+          "Report the result of your ticket implementation. " +
+          "You MUST call this tool exactly once before ending your session. " +
+          "On success: call with status='closed' after running bd close. " +
+          "On failure: call with status='blocked' (this also resets the ticket to open).",
+        args: {
+          status: tool.schema
+            .enum(["closed", "blocked"])
+            .describe("Whether the ticket was completed or is blocked"),
+          id: tool.schema
+            .number()
+            .describe("The bead ticket ID"),
+          reason: tool.schema
+            .string()
+            .optional()
+            .describe("If blocked: one-line summary of the blocker"),
+          branch: tool.schema
+            .string()
+            .optional()
+            .describe("If closed: the git branch name (e.g., bd-123)"),
+          files: tool.schema
+            .string()
+            .optional()
+            .describe("If closed: brief list of changed files"),
+          notes: tool.schema
+            .string()
+            .optional()
+            .describe("Any follow-up observations"),
+        },
+        async execute(args, context) {
+          if (context.agent !== "critter") {
+            return "ERROR: critter_report can only be called by critter agents."
+          }
+
+          const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T | null> =>
+            Promise.race([
+              promise,
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+            ])
+
+          if (args.status === "blocked") {
+            // Safety net: reset ticket to open so it's never orphaned in in_progress
+            try {
+              await withTimeout(ctx.$`bd update ${args.id} --status open --json`.quiet(), 5000)
+            } catch { /* best-effort — bd may not be available */ }
+
+            return `CRITTER_REPORT: BLOCKED ${args.id} REASON: ${args.reason ?? "unknown"}`
+          }
+
+          // status === "closed" — verify the ticket is actually closed in the tracker
+          let verified = false
+          try {
+            const result = await withTimeout(ctx.$`bd show ${args.id} --json`.quiet().text(), 5000)
+            if (result) {
+              verified = result.includes('"status":"closed"') ||
+                         result.includes('"status": "closed"')
+            }
+          } catch { /* best-effort */ }
+
+          const prefix = verified
+            ? `CRITTER_REPORT: CLOSED ${args.id}`
+            : `CRITTER_REPORT: UNVERIFIED_CLOSE ${args.id} (bd show did not confirm closure)`
+
+          return [
+            prefix,
+            `Branch: ${args.branch ?? "unknown"}`,
+            `Files: ${args.files ?? "unknown"}`,
+            `Notes: ${args.notes ?? "none"}`,
+          ].join("\n")
+        },
+      }),
     },
 
     config: async (config) => {
@@ -123,9 +225,11 @@ When beastmaster reports a blocker, decide the correct response:
         temperature: 0.3,
         steps: 30,
         permission: {
+          external_directory: "deny",
           edit: "deny",
           bash: {
             "*": "deny",
+            "bd edit*": "deny",
             "bd init*": "allow",
             "bd create*": "allow",
             "bd dep*": "allow",
@@ -193,11 +297,14 @@ CRITICAL: Your plans MUST be extremely granular. Break down large features into 
         temperature: 0.0,
         steps: 50,
         permission: {
+          doom_loop: "deny",
+          external_directory: "deny",
           task: {
             critter: "allow",
           },
           bash: {
             "*": "deny",
+            "bd edit*": "deny",
             "bd ready*": "allow",
             "bd list*": "allow",
             "bd show*": "allow",
@@ -217,12 +324,15 @@ Repeat until bd list --status open returns empty:
 
 1. HEALTH CHECK: Verify tracker health before dispatching.
    a. Run: bd list --status in_progress --json
-      Check for orphaned in_progress tickets (tasks started but never closed).
-      If a ticket has been in_progress for a very long time with no updates, report it.
+      Check for orphaned in_progress tickets (tasks started but never closed by a critter).
+      If ANY tickets are stuck in in_progress, reset them:
+        Run: bd update <id> --status open --json
+      This is safe — critters that are actively working will re-claim them.
+      If a critter already closed a ticket, it won't be in_progress anyway.
    b. Run: bd list --status open --json
       Check for circular dependencies in the dependency graph.
       (Task A blocks B, B blocks A → impossible to complete)
-   c. If tracker appears unhealthy: STOP and report the issue to Archdruid.
+   c. If tracker has circular dependencies: STOP and report the issue to Archdruid.
       Do NOT continue dispatching if the tracker state is corrupted.
 
 2. Run: bd ready --json
@@ -241,17 +351,32 @@ Repeat until bd list --status open returns empty:
          1. The bead ID
          2. The full ticket title and description (from bd show output)
          3. The label (frontend or backend)
-         4. This mandatory injection: "CRITICAL: You have a strict limit of 2 attempts to fix any failing test or bug. If you cannot resolve it, STOP immediately. Do NOT retry endlessly. Leave the ticket in in_progress, report the blocker, and terminate your session. ALWAYS use the \`timeout\` parameter in bash tool calls (e.g. timeout: 30000)."
-    c. Spawn up to 4 critters in parallel for independent tasks.
-       Do NOT spawn a critter for a task that depends on an in-progress task.
+           4. This mandatory injection: "CRITICAL: You have a strict limit of 2 attempts to fix any failing test or bug. You MUST call the critter_report tool before ending your session. Call it with status='blocked' if stuck (the tool resets the ticket automatically). Call it with status='closed' after closing the ticket. ALWAYS use the \`timeout\` parameter in bash tool calls (e.g. timeout: 30000)."
+     c. Spawn up to 4 critters in parallel for independent tasks.
+        Do NOT spawn a critter for a task that depends on an in-progress task.
 
-5. Wait for critters to report back.
-   - On success: loop back to step 1.
-     - On failure: STOP immediately. Do NOT dispatch more critters.
-       If one critter succeeds and another fails, report the failure but let the successful one remain closed.
-       Report the failing ticket ID, the error, and what critter attempted
-       back to Archdruid (your caller). Do NOT attempt to fix the issue yourself.
-       Do NOT resume the failed task ID (let it garbage collect).
+5. Wait for critters to report back. Parse each critter's response:
+   - Look for "CRITTER_REPORT: CLOSED <id>" → Likely success.
+   - Look for "CRITTER_REPORT: BLOCKED <id> REASON: ..." → Failure. The tool already reset the ticket.
+   - Look for "CRITTER_REPORT: UNVERIFIED_CLOSE <id>" → Suspicious. Ticket may not be closed.
+   - No CRITTER_REPORT line at all → Treat as failure. Critter may have crashed.
+
+6. VERIFICATION (mandatory — do this for EVERY ticket dispatched in step 4):
+   Run: bd show <id> --json
+   Check the actual "status" field in the JSON output:
+   - If status is "closed": confirmed success.
+   - If status is "open": critter failed and returned it (or the tool did it automatically). This is a failure.
+   - If status is "in_progress": critter died without reporting. Reset it:
+     Run: bd update <id> --status open --json
+     This is also a failure.
+
+   After verifying ALL tickets:
+   - If ALL tickets are confirmed closed: loop back to step 1.
+   - If ANY ticket is NOT closed: STOP immediately.
+     Do NOT dispatch more critters.
+     Report ALL non-closed ticket IDs, their status, their reasons (from critter response),
+     and what was attempted back to Archdruid (your caller).
+     Do NOT attempt to fix the issue yourself.
 </Loop>
 
 <Constraints>
@@ -282,16 +407,20 @@ The subagent runs in its own session — you wait for it to complete before send
         description: "Critter — ticket implementer that reads a bd issue, writes code, tests, and closes it",
         mode: "subagent",
         temperature: 0.2,
-        steps: 40,
+        steps: 25,
         permission: {
+          doom_loop: "deny",
+          external_directory: "deny",
           edit: "allow",
           task: {
             thread: "allow",
           },
           bash: {
             "*": "deny",
+            "bd edit*": "deny",
             "bd show*": "allow",
             "bd close*": "allow",
+            "bd update*": "allow",
             "bd dolt*": "allow",
             "git checkout*": "allow",
             "git add*": "allow",
@@ -313,6 +442,7 @@ The subagent runs in its own session — you wait for it to complete before send
             "make test*": "allow",
             "make check*": "allow",
             "ls*": "allow",
+	    "cat*": "allow",
           },
           webfetch: "deny",
         },
@@ -338,31 +468,48 @@ Keep your context small. Do ONE ticket. Do it completely.
 
 4. Run the relevant tests. If no tests exist, write a basic test for your change.
    Fix any failures before proceeding.
+   IMPORTANT: You have a STRICT limit of 2 attempts to fix any single failing test or bug.
+   If it still fails after 2 attempts, go to step 5 (abort).
 
-5. Save your work on a feature branch (MANDATORY):
+5. ABORT STEP (only if step 4 failed after 2 attempts):
+   Call the critter_report tool with status="blocked", id=<id>, reason="<what failed>".
+   The tool automatically resets the ticket to open status in the tracker.
+   STOP immediately after calling the tool. Do NOT continue to the branch/close steps.
+
+6. Save your work on a feature branch (MANDATORY):
    Run: git checkout -b bd-<id>
    Run: git add <files>
    Run: git commit -m "bd-<id>: <short description>"
    Run: git push -u origin bd-<id>
 
-6. Close the ticket and sync the tracker:
+7. Close the ticket and sync the tracker:
    Run: bd close <id> --reason="Completed implementation" --json
    Run: bd dolt push
 
-7. Report back to Beastmaster (your caller):
-   - Ticket ID closed
-   - Branch name pushed
-   - Files changed (brief list)
-   - Any follow-up issues you noticed (but did NOT fix — stay in scope)
+8. Call the critter_report tool with status="closed", id=<id>, branch="bd-<id>",
+   files="<brief list of changed files>", notes="<any observations or 'none'>".
+   The tool verifies the ticket is actually closed in the tracker.
 </Execution>
+
+<Reporting>
+You MUST call the critter_report tool EXACTLY ONCE before ending your session.
+- After closing a ticket successfully (step 7): call with status="closed"
+- After failing to complete (step 5): call with status="blocked"
+Do NOT end your session without calling this tool. Beastmaster relies on it to
+determine success or failure. If you do not call the tool, your work is treated as a failure.
+</Reporting>
 
 <Constraints>
 - Implement ONLY what the ticket describes
 - Never read or expose .env files, credentials, API keys, or secret files
+- NEVER search or read outside the project repository. Do NOT attempt to access
+  system directories (e.g., /home/.../go/pkg/mod, /usr/local, /opt, node_modules
+  in other projects). If a path is not under the project root, ignore it and move on.
 - If the ticket is ambiguous or blocked by something unexpected, do NOT guess.
-  Report the blocker clearly to Beastmaster (your caller).
-- FAIL FAST: You have a strict limit of 2 attempts to fix any failing test/bug.
-  If it fails twice, STOP and report the blocker. Do not retry endlessly.
+  Call critter_report with status="blocked" and a clear reason, then STOP.
+- FAIL FAST: Max 2 attempts to fix any failing test/bug. After 2 failures, execute the
+  ABORT STEP (step 5) and terminate. Do NOT retry a third time under any circumstances.
+- You MUST call the critter_report tool before ending your session.
 - ANTI-HANG: Always use the \`timeout\` parameter for bash tools (e.g., \`timeout: 30000\`).
 - ANTI-HANG: Never use \`bd edit\` (it opens vim and hangs).
 </Constraints>`,
@@ -378,9 +525,12 @@ Keep your context small. Do ONE ticket. Do it completely.
         temperature: 0.1,
         steps: 20,
         permission: {
+          doom_loop: "deny",
+          external_directory: "deny",
           edit: "deny",
           bash: {
             "*": "deny",
+            "bd edit*": "deny",
             "npm run*": "allow",
             "npm test*": "allow",
             "make*": "allow",
@@ -433,6 +583,7 @@ You NEVER write code. You NEVER create new tickets. You only judge and re-open.
         temperature: 0.0,
         steps: 15,
         permission: {
+          external_directory: "deny",
           edit: "deny",
           bash: { "*": "deny", "git*": "allow", "grep*": "allow", "find*": "allow", "ls*": "allow" },
           webfetch: "deny",
@@ -453,6 +604,7 @@ Answer questions about structure, patterns, and existing code quickly and precis
         temperature: 0.1,
         steps: 15,
         permission: {
+          external_directory: "deny",
           edit: "deny",
           bash: { "*": "deny" },
         },
@@ -472,6 +624,7 @@ You never modify files. Return concise, relevant summaries with sources.
         temperature: 0.3,
         steps: 20,
         permission: {
+          external_directory: "deny",
           edit: "allow",
           bash: { "*": "deny" },
           webfetch: "allow",
