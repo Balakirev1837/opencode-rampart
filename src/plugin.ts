@@ -218,7 +218,7 @@ When beastmaster reports a blocker, decide the correct response:
       // Technical Product Manager. Takes a high-level goal and creates granular
       // bd tickets with dependencies. Runs on Opus for maximum planning quality.
       a["seer"] = {
-        model: "moonshotai/kimi-k2.6",
+        model: "openrouter/moonshotai/kimi-k2.6",
         description: "Seer — technical PM that breaks down requests into granular bd issues",
         mode: "subagent",
         hidden: true,
@@ -291,7 +291,7 @@ CRITICAL: Your plans MUST be extremely granular. Break down large features into 
       // Sprint dispatcher. Polls the beads ready queue and spawns 1-4
       // Critter agents in parallel. Pauses and surfaces blockers to Archdruid.
       a["beastmaster"] = {
-        model: "deepseek/deepseek-v4-flash",
+        model: "openrouter/deepseek/deepseek-v4-flash",
         description: "Beastmaster — sprint dispatcher that works the bd ready queue via parallel critter agents",
         mode: "subagent",
         temperature: 0.0,
@@ -519,7 +519,7 @@ determine success or failure. If you do not call the tool, your work is treated 
       // Epic-level reviewer. Runs global checks across the integrated epic.
       // Re-opens tickets that cause regressions or fail tests.
       a["hierophant"] = {
-        model: "anthropic/claude-3.5-sonnet",
+        model: "openrouter/anthropic/claude-sonnet-4-20250514",
         description: "Hierophant — epic-level reviewer that runs global checks and re-opens failed tickets",
         mode: "subagent",
         temperature: 0.1,
